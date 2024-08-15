@@ -13,7 +13,7 @@ function insert_property_in_db(){
     CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
     CURLOPT_CUSTOMREQUEST => 'GET',
     CURLOPT_HTTPHEADER => array(
-        'Authorization: Bearer 1469db7a-c466-4642-a88f-c9c4ac8d3015'
+        'Authorization: Bearer 403fe4d8-9d33-4133-96f3-75a05b4217b5'
     ),
     ));
 
@@ -67,6 +67,13 @@ function insert_property_import_in_db() {
 
         $uniqueid = $rental['uniqueID'];
 
+        // if uniqueID already exists in the database, skip it
+        $sql = $wpdb->prepare("SELECT * FROM $table_name WHERE uniqueid = %s", $uniqueid);
+        $result = $wpdb->get_row($sql);
+        if ($result) {
+            continue; // Skip this rental if uniqueID already exists in the database
+        }
+        
         // Prepare the SQL query
         $sql = $wpdb->prepare("INSERT INTO $table_name (uniqueid, status) VALUES (%s, %s)", $uniqueid, $status);
         $result = $wpdb->query($sql);
