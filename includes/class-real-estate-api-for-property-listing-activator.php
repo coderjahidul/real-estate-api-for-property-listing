@@ -36,8 +36,8 @@ class Real_Estate_Api_For_Property_Listing_Activator {
         
         $sql = "CREATE TABLE IF NOT EXISTS $table_name (
             id INT AUTO_INCREMENT,
-            uniqueid VARCHAR(255) NOT NULL,
-            status VARCHAR(255) NOT NULL,
+            unique_id varchar(255) NOT NULL,
+            value text NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 

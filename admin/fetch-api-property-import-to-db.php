@@ -1,6 +1,32 @@
 <?php
 // Insert Property In Database
 function insert_property_in_db(){
+
+    $curl = curl_init();
+
+    curl_setopt_array($curl, array(
+    CURLOPT_URL => 'https://api.realestate.com.au/oauth/token',
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_ENCODING => '',
+    CURLOPT_MAXREDIRS => 10,
+    CURLOPT_TIMEOUT => 0,
+    CURLOPT_FOLLOWLOCATION => true,
+    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+    CURLOPT_CUSTOMREQUEST => 'POST',
+    CURLOPT_POSTFIELDS => 'grant_type=client_credentials',
+    CURLOPT_HTTPHEADER => array(
+        'Content-Type: application/x-www-form-urlencoded',
+        'Authorization: Basic MmFiZDcwMjMtZThjMy00OWNlLTgzMTYtYTI4YzgzZjliYWVkOjIzY2I4MDAxLTNkNjgtNDJkYS1hNWY1LTExMDFiYzIwNTkyNA=='
+    ),
+    ));
+
+    $response = curl_exec($curl);
+
+    curl_close($curl);
+     $Authorization = 'Bearer ' . json_decode($response)->access_token;
+
+
+
     $curl = curl_init();
 
     curl_setopt_array($curl, array(
@@ -13,7 +39,7 @@ function insert_property_in_db(){
     CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
     CURLOPT_CUSTOMREQUEST => 'GET',
     CURLOPT_HTTPHEADER => array(
-        'Authorization: Bearer 403fe4d8-9d33-4133-96f3-75a05b4217b5'
+        'Authorization: ' . $Authorization
     ),
     ));
 
@@ -24,7 +50,8 @@ function insert_property_in_db(){
 }
 
 
-function insert_property_import_in_db() {
+function insert_property_import_array_in_db() {
+    // Call function to get API response
     $api_response = insert_property_in_db();
 
     // Ensure that the API response is a valid XML string
@@ -42,46 +69,49 @@ function insert_property_import_in_db() {
         return "The 'rental' key does not exist in the API response.";
     }
 
-    // Extract the rental data
-    $rental_data = $properties['rental'];
-
-    // Check if rental_data is a list or a single rental
-    if (isset($rental_data[0])) {
-        // rental_data is a list of rentals
-        $rentals = $rental_data;
-    } else {
-        // rental_data is a single rental, convert it to an array for consistency
-        $rentals = [$rental_data];
-    }
-
+    // Get global $wpdb object
     global $wpdb;
     $table_name = $wpdb->prefix . 'sync_property';
-    $status = "pending";
-
-    // Iterate through each rental and insert the uniqueID into the database
-    foreach ($rentals as $rental) {
-        // Check if 'uniqueID' exists in the rental property
-        if (!array_key_exists('uniqueID', $rental)) {
-            continue; // Skip this rental if uniqueID is not present
-        }
-
-        $uniqueid = $rental['uniqueID'];
-
-        // if uniqueID already exists in the database, skip it
-        $sql = $wpdb->prepare("SELECT * FROM $table_name WHERE uniqueid = %s", $uniqueid);
-        $result = $wpdb->get_row($sql);
-        if ($result) {
-            continue; // Skip this rental if uniqueID already exists in the database
+    
+    // Loop through each property and insert it into the database
+    foreach ($properties['rental'] as $property) {
+        // Check if 'unique_id' exists in the property data
+        if (!isset($property['uniqueID'])) {
+            continue; // Skip if unique_id is not present
         }
         
-        // Prepare the SQL query
-        $sql = $wpdb->prepare("INSERT INTO $table_name (uniqueid, status) VALUES (%s, %s)", $uniqueid, $status);
-        $result = $wpdb->query($sql);
+        $unique_id = $property['uniqueID'];
+        
+        // Check if the unique_id already exists in the database
+        $id_exists = $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT id FROM $table_name WHERE unique_id = %s",
+                $unique_id
+            )
+        );
 
+        if ($id_exists) {
+            continue; // Skip to the next property if the unique_id already exists
+        }
+
+        // Prepare data for insertion
+        $data = array(
+            'value'      => maybe_serialize($property), // Serialize the value if it's an array or object
+            'unique_id'  => $unique_id,
+        );
+
+        // Define format for data types ('%s' for strings, adjust as needed)
+        $format = array('%s', '%s');
+
+        // Insert property data into the database
+        $result = $wpdb->insert($table_name, $data, $format);
+
+        // Check for errors
         if ($result === false) {
-            return "Failed to insert property data for Unique ID: $uniqueid.";
+            // Return or log the actual error message
+            return "Error inserting property data into database: " . $wpdb->last_error;
         }
     }
 
-    return "All properties inserted successfully.";
+    return "Properties inserted successfully.";
 }
