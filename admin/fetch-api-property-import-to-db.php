@@ -96,12 +96,13 @@ function insert_property_import_array_in_db() {
 
         // Prepare data for insertion
         $data = array(
-            'value'      => maybe_serialize($property), // Serialize the value if it's an array or object
+            'value'      => json_encode($property), // Serialize the value if it's an array or object
             'unique_id'  => $unique_id,
+            'status'     => "panding",
         );
 
         // Define format for data types ('%s' for strings, adjust as needed)
-        $format = array('%s', '%s');
+        $format = array('%s', '%s', '%s');
 
         // Insert property data into the database
         $result = $wpdb->insert($table_name, $data, $format);
